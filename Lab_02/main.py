@@ -3,8 +3,8 @@ def first_fibonacci_numbers(n):
     a, b = 0, 1
     res = []
     for i in range(n):
-        res.append(a + b)
         a, b = b, a + b
+        res.append(b)
     return res
 
 

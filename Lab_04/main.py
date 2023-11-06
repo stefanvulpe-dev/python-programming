@@ -1,3 +1,6 @@
+import copy
+
+
 class Stack:
     def __init__(self):
         self.items = []
@@ -5,8 +8,11 @@ class Stack:
         self.end = 0
 
     def push(self, item):
-        self.items.append(item)
-        self.end += 1
+        if item is not None:
+            self.items.append(item)
+            self.end += 1
+        else:
+            print('None value is not allowed')
 
     def pop(self):
         if self.end == self.start:
@@ -44,6 +50,9 @@ class Queue:
         self.end = 0
 
     def enqueue(self, item):
+        if item is None:
+            print('None value is not allowed')
+            return
         self.items.append(item)
         self.end += 1
 
@@ -108,9 +117,13 @@ class Matrix:
         return result
 
     def map(self, func):
+        mat = copy.deepcopy(self.matrix)
         for i in range(self.n):
             for j in range(self.m):
-                self.matrix[i][j] = func(self.matrix[i][j])
+                if issubclass(type(func(self.matrix[i][j])), Exception):
+                    return
+                mat = func(self.matrix[i][j])
+        self.matrix = mat
 
     def __str__(self):
         return str(self.matrix)
@@ -131,5 +144,9 @@ print(matrix.get_element(0, 1))
 m1 = Matrix.transpose([[1, 2, 3], [4, 5, 6]])
 print("Transpose:\n ", m1)
 print("Multiply:\n ", Matrix.multiply(matrix.matrix, m1))
-matrix.map(lambda x: x + 1)
+try:
+    matrix.map(lambda x: x / 0)
+except Exception as e:
+    print(e)
 print("Map:\n ", matrix)
+

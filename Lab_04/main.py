@@ -1,6 +1,15 @@
 import copy
 
 
+class Result:
+    def __init__(self, value, error):
+        self.value = value
+        self.error = error
+
+    def __str__(self):
+        return str(self.value) + " " + str(self.error)
+
+
 class Stack:
     def __init__(self):
         self.items = []
@@ -8,24 +17,21 @@ class Stack:
         self.end = 0
 
     def push(self, item):
-        if item is not None:
-            self.items.append(item)
-            self.end += 1
-        else:
-            print('None value is not allowed')
+        self.items.append(copy.deepcopy(item))
+        self.end += 1
 
     def pop(self):
         if self.end == self.start:
-            return None
+            return Result(None, "Stack is empty")
         else:
             self.end -= 1
-            return self.items[self.end]
+            return Result(self.items[self.end], "No error")
 
     def peek(self):
         if self.end == self.start:
-            return None
+            return Result(None, "Stack is empty")
         else:
-            return self.items[self.end - 1]
+            return Result(self.items[self.end - 1], "No error")
 
     def __str__(self):
         return str(self.items[self.start:self.end])
@@ -35,12 +41,15 @@ print('-*-' * 5 + 'Stack' + '-*-' * 5)
 stack = Stack()
 stack.push(1)
 stack.push(2)
+stack.push(None)
 print(stack)
 print(stack.peek())
 stack.pop()
 print(stack.peek())
 stack.pop()
 print(stack.peek())
+print(stack.pop())
+print(stack.pop())
 
 
 class Queue:
@@ -50,24 +59,21 @@ class Queue:
         self.end = 0
 
     def enqueue(self, item):
-        if item is None:
-            print('None value is not allowed')
-            return
-        self.items.append(item)
+        self.items.append(copy.deepcopy(item))
         self.end += 1
 
     def dequeue(self):
         if self.end == self.start:
-            return None
+            return Result(None, "Queue is empty")
         else:
             self.start += 1
-            return self.items[self.start - 1]
+            return Result(self.items[self.start - 1], "No error")
 
     def peek(self):
         if self.end == self.start:
-            return None
+            return Result(None, "Queue is empty")
         else:
-            return self.items[self.start]
+            return Result(self.items[self.start], "No error")
 
     def __str__(self):
         return str(self.items[self.start:self.end])
@@ -77,7 +83,10 @@ print('-*-' * 5 + 'Queue' + '-*-' * 5)
 queue = Queue()
 queue.enqueue(3)
 queue.enqueue(4)
+queue.enqueue(None)
 print(queue)
+print(queue.peek())
+queue.dequeue()
 print(queue.peek())
 queue.dequeue()
 print(queue.peek())

@@ -8,8 +8,8 @@ def error_handler(exception):
 
 
 def rename_files_with_common_ext(path):
-    extensions = {}
     for (root, _, files) in os.walk(path, onerror=error_handler):
+        extensions = {}
         for file in files:
             try:
                 file_path = os.path.join(root, file)

@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import subprocess
 
 from dotenv import dotenv_values
 from redis import Redis
@@ -82,6 +83,16 @@ def populate_queue(redis_conn, queue_name, input_data, output_dir, logger):
                 logger.info(f'Pushed {link} to {queue_name}')
             except Exception as e:
                 logger.error(f'Cannot push to {queue_name}: {e}')
+
+
+def spawn_workers(nr_of_workers, queue_name, logger):
+    logger.info(f'Spawning {nr_of_workers} workers')
+    for i in range(nr_of_workers):
+        logger.info(f'Spawning worker {i}')
+        try:
+            subprocess.Popen(['python', 'worker.py', '-q', queue_name])
+        except Exception as e:
+            logger.error(f'Cannot spawn worker: {e}')
 
 
 def main():

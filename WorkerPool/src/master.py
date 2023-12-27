@@ -78,6 +78,8 @@ def populate_queue(redis_conn, queue_name, input_data, output_dir, logger):
                 exit(1)
             try:
                 redis_conn.lpush(queue_name, json.dumps({'DiskLocation': disk_location, 'link': link}))
+                redis_conn.expire(queue_name, 60 * 5)
+                logger.info(f'Pushed {link} to {queue_name}')
             except Exception as e:
                 logger.error(f'Cannot push to {queue_name}: {e}')
 

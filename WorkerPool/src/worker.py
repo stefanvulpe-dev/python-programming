@@ -1,8 +1,10 @@
 import argparse
+import json
 import logging
 import os
 
 from dotenv import dotenv_values
+from pywebcopy import save_webpage
 from redis import Redis
 
 
@@ -33,12 +35,18 @@ def parse_args():
 
 def process_job(job, logger):
     logger.info(f'Worker {os.getpid()} processing job: {job}')
-    output_dir = job[1]['DiskLocation']
+    job_content = json.loads(job[1])
+    output_dir = job_content['DiskLocation']
+    page_url = f'https://www.{job_content['link'].lower()}'
 
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
 
-    # subprocess.run(['wget', '-P', output_dir, job[1]['link']])
+    try:
+        save_webpage(url=page_url, project_folder=output_dir, project_name=job_content['link'], open_in_browser=False,
+                     bypass_robots=True)
+    except Exception as e:
+        logger.error(f'Unexpected error saving page {page_url}: {e}')
+
     logger.info(f'Worker {os.getpid()} finished processing job: {job}')
 
 

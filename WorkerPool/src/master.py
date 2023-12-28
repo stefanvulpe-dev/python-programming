@@ -79,7 +79,7 @@ def populate_queue(redis_conn, queue_name, input_data, output_dir, logger):
                 exit(1)
             try:
                 redis_conn.lpush(queue_name, json.dumps({'DiskLocation': disk_location, 'link': link}))
-                redis_conn.expire(queue_name, 60 * 5)
+                redis_conn.expire(queue_name, 60 * 10)
                 logger.info(f'Pushed {link} to {queue_name}')
             except Exception as e:
                 logger.error(f'Cannot push to {queue_name}: {e}')
@@ -87,12 +87,16 @@ def populate_queue(redis_conn, queue_name, input_data, output_dir, logger):
 
 def spawn_workers(nr_of_workers, queue_name, logger):
     logger.info(f'Spawning {nr_of_workers} workers')
+    processes = []
     for i in range(nr_of_workers):
         logger.info(f'Spawning worker {i}')
         try:
-            subprocess.Popen(['python', 'worker.py', '-q', queue_name])
+            processes.append(subprocess.Popen(['python', './src/worker.py', '-q', queue_name]))
         except Exception as e:
             logger.error(f'Cannot spawn worker: {e}')
+
+    for process in processes:
+        process.wait()
 
 
 def main():
@@ -124,6 +128,8 @@ def main():
     input_data = read_input_data(args.file, logger)
 
     populate_queue(redis_conn, args.queue, input_data, args.output, logger)
+
+    spawn_workers(args.workers, args.queue, logger)
 
     logger.info('master end successfully')
 

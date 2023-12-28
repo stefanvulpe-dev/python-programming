@@ -1,30 +1,15 @@
 import argparse
+import asyncio
 import json
-import logging
 import os
 
+import aiofiles
+import aiohttp
+import requests
 from dotenv import dotenv_values
-from pywebcopy import save_webpage
 from redis import Redis
 
-
-def get_logger():
-    logger = logging.getLogger(f'worker-{os.getpid()}')
-    logger.setLevel(logging.INFO)
-
-    formatter = logging.Formatter('[%(asctime)s] - %(name)s - %(levelname)s - %(message)s', "%Y-%m-%d %H:%M:%S")
-
-    fh = logging.FileHandler(f'./logs/worker-{os.getpid()}.log')
-    fh.setLevel(logging.INFO)
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
-
-    sh = logging.StreamHandler()
-    sh.setLevel(logging.INFO)
-    sh.setFormatter(formatter)
-    logger.addHandler(sh)
-
-    return logger
+from src.utils import get_logger, ping_redis
 
 
 def parse_args():
@@ -33,42 +18,55 @@ def parse_args():
     return parser.parse_args()
 
 
+async def save_webpage(url, disk_location, logger):
+    try:
+        os.path.normpath(disk_location)
+    except TypeError as e:
+        logger.error(f'Invalid output directory: {e}')
+        return
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                content = await response.read()
+
+        async with aiofiles.open(disk_location, 'wb') as f:
+            await f.write(content)
+    except Exception as e:
+        logger.error(f'Unexpected error downloading page {url}: {e}')
+
+
+def download_webpage(url, disk_location, logger):
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(save_webpage(url, disk_location, logger))
+
+
 def process_job(job, logger):
     logger.info(f'Worker {os.getpid()} processing job: {job}')
     job_content = json.loads(job[1])
     output_dir = job_content['DiskLocation']
     page_url = f'https://www.{job_content['link'].lower()}'
 
-    try:
-        os.path.normpath(output_dir)
-    except TypeError as e:
-        logger.error(f'Invalid output directory: {e}')
-        return
-
     os.makedirs(output_dir, exist_ok=True)
 
-    try:
-        save_webpage(url=page_url, project_folder=output_dir, project_name=job_content['link'], open_in_browser=False,
-                     bypass_robots=True)
-    except Exception as e:
-        logger.error(f'Unexpected error saving page {page_url}: {e}')
+    download_webpage(page_url, f'{output_dir}\\{job_content['link'].lower()}_index.html', logger)
 
     logger.info(f'Worker {os.getpid()} finished processing job: {job}')
 
 
 def work(redis_conn, queue_name, logger):
     while True:
-        job = redis_conn.brpop(queue_name, 60)
+        job = redis_conn.brpop(queue_name, 30)
         if job is None:
             break
         logger.info(f'Worker {os.getpid()} got job: {job}')
         process_job(job, logger)
 
-    logger.info(f'Worker {os.getpid()} got no job in 60 seconds, exiting')
+    logger.info(f'Worker {os.getpid()} got no job in 30 seconds, exiting')
 
 
 def main():
-    logger = get_logger()
+    logger = get_logger(f'worker-{os.getpid()}', f'./logs/worker-{os.getpid()}.log')
     args = parse_args()
 
     logger.info(f'Worker {os.getpid()} started')
@@ -80,13 +78,7 @@ def main():
     redis_conn = Redis(host=dotenv_values('.env')['REDIS_HOST'], port=dotenv_values('.env')['REDIS_PORT'],
                        decode_responses=True)
 
-    try:
-        redis_conn.ping()
-    except Exception as e:
-        logger.error(f'Cannot connect to Redis server: {e}')
-        exit(1)
-    else:
-        logger.info('Connected to Redis')
+    ping_redis(redis_conn, logger)
 
     work(redis_conn, args.queue, logger)
 

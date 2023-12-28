@@ -39,6 +39,12 @@ def process_job(job, logger):
     output_dir = job_content['DiskLocation']
     page_url = f'https://www.{job_content['link'].lower()}'
 
+    try:
+        os.path.normpath(output_dir)
+    except TypeError as e:
+        logger.error(f'Invalid output directory: {e}')
+        return
+
     os.makedirs(output_dir, exist_ok=True)
 
     try:
@@ -52,9 +58,13 @@ def process_job(job, logger):
 
 def work(redis_conn, queue_name, logger):
     while True:
-        job = redis_conn.brpop(queue_name, 0)
+        job = redis_conn.brpop(queue_name, 60)
+        if job is None:
+            break
         logger.info(f'Worker {os.getpid()} got job: {job}')
         process_job(job, logger)
+
+    logger.info(f'Worker {os.getpid()} got no job in 60 seconds, exiting')
 
 
 def main():
@@ -70,10 +80,17 @@ def main():
     redis_conn = Redis(host=dotenv_values('.env')['REDIS_HOST'], port=dotenv_values('.env')['REDIS_PORT'],
                        decode_responses=True)
 
+    try:
+        redis_conn.ping()
+    except Exception as e:
+        logger.error(f'Cannot connect to Redis server: {e}')
+        exit(1)
+    else:
+        logger.info('Connected to Redis')
+
     work(redis_conn, args.queue, logger)
 
     logger.info(f'Worker {os.getpid()} finished')
 
 
-if __name__ == '__main__':
-    main()
+main()

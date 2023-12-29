@@ -1,24 +1,67 @@
+"""Worker process for RQ workers
+
+Usage:
+python worker.py [-q <queue_name>]
+
+Arguments:
+-q, --queue: Redis queue name
+
+Exit codes:
+1: no .env file found
+1: cannot connect to Redis
+1: unexpected error
+
+Example:
+python worker.py -q worker-pool-queue
+
+Author:
+Stefan Vulpe
+
+Date:
+2023/12/28
+"""
+
+
 import argparse
 import asyncio
 import json
 import os
+import sys
 
 import aiofiles
 import aiohttp
-import requests
 from dotenv import dotenv_values
 from redis import Redis
 
-from src.utils import get_logger, ping_redis
+from src.utils.utils import get_logger, ping_redis
 
 
 def parse_args():
+    """Parse command line arguments
+
+    Parse command line arguments and return the parsed arguments.
+
+    Returns:
+    argparse.Namespace: parsed arguments
+    """
     parser = argparse.ArgumentParser(prog='worker.py', description='Worker process for RQ workers')
     parser.add_argument('-q', '--queue', type=str, default='worker-pool-queue', help='Redis queue name')
     return parser.parse_args()
 
 
 async def save_webpage(url, disk_location, logger):
+    """Saves a webpage to disk
+
+    Saves a webpage to disk using aiohttp and aiofiles.
+
+    Args:
+    url (str): webpage url
+    disk_location (str): path to the output file
+    logger (logging.Logger): logger object
+
+    Returns:
+    None
+    """
     try:
         os.path.normpath(disk_location)
     except TypeError as e:
@@ -37,11 +80,43 @@ async def save_webpage(url, disk_location, logger):
 
 
 def download_webpage(url, disk_location, logger):
-    loop = asyncio.get_event_loop()
+    """Downloads a webpage
+
+    Downloads a webpage using asyncio and saves it to disk.
+
+    Args:
+    url (str): webpage url
+    disk_location (str): path to the output file
+    logger (logging.Logger): logger object
+
+    Returns:
+    None
+    """
+    if sys.version_info < (3, 10):
+        loop = asyncio.get_event_loop()
+    else:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+
+        asyncio.set_event_loop(loop)
+
     loop.run_until_complete(save_webpage(url, disk_location, logger))
 
 
 def process_job(job, logger):
+    """Processes a job
+
+    Processes a job by downloading a webpage.
+
+    Args:
+    job (tuple): job tuple
+    logger (logging.Logger): logger object
+
+    Returns:
+    None
+    """
     logger.info(f'Worker {os.getpid()} processing job: {job}')
     job_content = json.loads(job[1])
     output_dir = job_content['DiskLocation']
@@ -55,6 +130,18 @@ def process_job(job, logger):
 
 
 def work(redis_conn, queue_name, logger):
+    """Worker process
+
+    Worker process that gets jobs from the queue and processes them.
+
+    Args:
+    redis_conn (Redis): Redis connection object
+    queue_name (str): name of the queue
+    logger (logging.Logger): logger object
+
+    Returns:
+    None
+    """
     while True:
         job = redis_conn.brpop(queue_name, 30)
         if job is None:
@@ -66,7 +153,14 @@ def work(redis_conn, queue_name, logger):
 
 
 def main():
-    logger = get_logger(f'worker-{os.getpid()}', f'./logs/worker-{os.getpid()}.log')
+    """Main function
+
+    Main function that spawns the worker process.
+
+    Returns:
+    None
+    """
+    logger = get_logger(f'worker-{os.getpid()}', f'./static/logs/worker-{os.getpid()}.log')
     args = parse_args()
 
     logger.info(f'Worker {os.getpid()} started')
@@ -85,4 +179,5 @@ def main():
     logger.info(f'Worker {os.getpid()} finished')
 
 
-main()
+if __name__ == '__main__':
+    main()

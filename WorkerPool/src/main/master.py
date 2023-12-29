@@ -1,3 +1,35 @@
+"""Master process for RQ workers
+
+Usage:
+python master.py -f <path_to_file> -o <path_to_output_directory> [-w <number_of_workers>] [-q <queue_name>]
+
+Arguments:
+-f, --file: path to the json file with top sites
+-o, --output: path to the output directory, where the results will be saved
+-w, --workers: number of workers to spawn
+-q, --queue: Redis queue name
+
+Exit codes:
+1: file not found
+1: permission error
+1: IO error
+1: unexpected error
+1: no .env file found
+1: queue already exists
+1: cannot delete queue
+1: cannot push to queue
+1: cannot spawn worker
+
+Example:
+python master.py -f ./data/top_sites.json -o ./output -w 1 -q worker-pool-queue
+
+Author:
+Stefan Vulpe
+
+Date:
+2023/12/28
+"""
+
 import argparse
 import json
 import subprocess
@@ -5,10 +37,17 @@ import subprocess
 from dotenv import dotenv_values
 from redis import Redis
 
-from src.utils import get_logger, ping_redis, check_file_arg, check_dir_arg, check_workers_arg
+from src.utils.utils import get_logger, ping_redis, check_file_arg, check_dir_arg, check_workers_arg
 
 
 def parse_args():
+    """Parse command line arguments
+
+    Parse command line arguments and return the parsed arguments.
+
+    Returns:
+    argparse.Namespace: parsed arguments
+    """
     parser = argparse.ArgumentParser(prog='master.py', description='Master process for RQ workers')
     parser.add_argument('-f', '--file', type=check_file_arg, required=True, help='Path to the json file with top sites')
     parser.add_argument('-o', '--output', type=check_dir_arg, required=True,
@@ -19,6 +58,23 @@ def parse_args():
 
 
 def read_input_data(file_path, logger):
+    """Reads the input data from a json file
+
+    Reads the input data from a json file and returns it.
+
+    Args:
+    file_path (str): path to the json file
+    logger (logging.Logger): logger object
+
+    Returns:
+    dict: input data
+
+    Exit codes:
+    1: file not found
+    1: permission error
+    1: IO error
+    1: unexpected error
+    """
     file = None
     try:
         file = open(file_path, 'r')
@@ -41,6 +97,23 @@ def read_input_data(file_path, logger):
 
 
 def populate_queue(redis_conn, queue_name, input_data, output_dir, logger):
+    """Populates the queue with the input data
+
+    Populates the queue with the input data. If the queue already exists, it is deleted and recreated.
+
+    Args:
+    redis_conn (redis.Redis): redis connection object
+    queue_name (str): name of the queue
+    input_data (dict): input data
+    output_dir (str): path to the output directory
+    logger (logging.Logger): logger object
+
+    Exit codes:
+    1: queue already exists
+    1: cannot delete queue
+    1: cannot push to queue
+    1: unexpected error
+    """
     if redis_conn.exists(queue_name):
         logger.info(f'Queue {queue_name} already exists')
         logger.info('Deleting the queue')
@@ -59,12 +132,24 @@ def populate_queue(redis_conn, queue_name, input_data, output_dir, logger):
 
 
 def spawn_workers(nr_of_workers, queue_name, logger):
+    """Spawns the workers
+
+    Spawns the workers and waits for them to finish.
+
+    Args:
+    nr_of_workers (int): number of workers to spawn
+    queue_name (str): name of the queue
+    logger (logging.Logger): logger object
+
+    Exit codes:
+    1: cannot spawn worker
+    """
     logger.info(f'Spawning {nr_of_workers} workers')
     processes = []
     for i in range(nr_of_workers):
         logger.info(f'Spawning worker {i}')
         try:
-            processes.append(subprocess.Popen(['python', './src/worker.py', '-q', queue_name]))
+            processes.append(subprocess.Popen(['python', './src/main/worker.py', '-q', queue_name]))
         except Exception as e:
             logger.error(f'Cannot spawn worker: {e}')
 
@@ -73,7 +158,15 @@ def spawn_workers(nr_of_workers, queue_name, logger):
 
 
 def main():
-    logger = get_logger('master', './logs/master.log')
+    """Main function
+
+    Main function of the master process. It parses the command line arguments, reads the input data from a json file,
+    populates the queue with the input data and spawns the workers.
+
+    Exit codes:
+    1: no .env file found
+    """
+    logger = get_logger('master', './static/logs/master.log')
     args = parse_args()
 
     logger.info('master start')

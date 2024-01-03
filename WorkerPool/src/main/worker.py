@@ -92,6 +92,7 @@ def download_webpage(url, disk_location, logger):
     Returns:
     None
     """
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     if sys.version_info < (3, 10):
         loop = asyncio.get_event_loop()
     else:

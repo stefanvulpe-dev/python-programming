@@ -124,7 +124,7 @@ def populate_queue(redis_conn, queue_name, input_data, output_dir, logger):
         for link in sites.values():
             disk_location = f'{output_dir}\\{country}'
             try:
-                redis_conn.lpush(queue_name, json.dumps({'DiskLocation': disk_location, 'link': link}))
+                redis_conn.rpush(queue_name, json.dumps({'DiskLocation': disk_location, 'link': link}))
                 redis_conn.expire(queue_name, 60 * 60)
                 logger.info(f'Pushed {link} to {queue_name}')
             except Exception as e:

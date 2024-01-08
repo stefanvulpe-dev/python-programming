@@ -21,12 +21,10 @@ Date:
 2023/12/28
 """
 
-
 import argparse
 import asyncio
 import json
 import os
-import sys
 
 import aiofiles
 import aiohttp
@@ -79,34 +77,7 @@ async def save_webpage(url, disk_location, logger):
         logger.error(f'Unexpected error downloading page {url}: {e}')
 
 
-def download_webpage(url, disk_location, logger):
-    """Downloads a webpage
-
-    Downloads a webpage using asyncio and saves it to disk.
-
-    Args:
-    url (str): webpage url
-    disk_location (str): path to the output file
-    logger (logging.Logger): logger object
-
-    Returns:
-    None
-    """
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    if sys.version_info < (3, 10):
-        loop = asyncio.get_event_loop()
-    else:
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-
-        asyncio.set_event_loop(loop)
-
-    loop.run_until_complete(save_webpage(url, disk_location, logger))
-
-
-def process_job(job, logger):
+async def process_job(job, logger):
     """Processes a job
 
     Processes a job by downloading a webpage.
@@ -125,12 +96,12 @@ def process_job(job, logger):
 
     os.makedirs(output_dir, exist_ok=True)
 
-    download_webpage(page_url, f'{output_dir}\\{job_content['link'].lower()}_index.html', logger)
+    await save_webpage(page_url, f'{output_dir}\\{job_content['link'].lower()}_index.html', logger)
 
     logger.info(f'Worker {os.getpid()} finished processing job: {job}')
 
 
-def work(redis_conn, queue_name, logger):
+async def work(redis_conn, queue_name, logger):
     """Worker process
 
     Worker process that gets jobs from the queue and processes them.
@@ -144,11 +115,11 @@ def work(redis_conn, queue_name, logger):
     None
     """
     while True:
-        job = redis_conn.brpop(queue_name, 30)
+        job = redis_conn.blpop(queue_name, 30)
         if job is None:
             break
         logger.info(f'Worker {os.getpid()} got job: {job}')
-        process_job(job, logger)
+        await process_job(job, logger)
 
     logger.info(f'Worker {os.getpid()} got no job in 30 seconds, exiting')
 
@@ -175,7 +146,7 @@ def main():
 
     ping_redis(redis_conn, logger)
 
-    work(redis_conn, args.queue, logger)
+    asyncio.run(work(redis_conn, args.queue, logger))
 
     logger.info(f'Worker {os.getpid()} finished')
 

@@ -42,8 +42,11 @@ def parse_args():
     Returns:
     argparse.Namespace: parsed arguments
     """
-    parser = argparse.ArgumentParser(prog='worker.py', description='Worker process for RQ workers')
-    parser.add_argument('-q', '--queue', type=str, default='worker-pool-queue', help='Redis queue name')
+    parser = argparse.ArgumentParser(prog='worker.py',
+                                     description='Worker process for '
+                                                 'RQ workers')
+    parser.add_argument('-q', '--queue', type=str, default='worker-pool-queue',
+                        help='Redis queue name')
     return parser.parse_args()
 
 
@@ -96,7 +99,10 @@ async def process_job(job, logger):
 
     os.makedirs(output_dir, exist_ok=True)
 
-    await save_webpage(page_url, f'{output_dir}\\{job_content['link'].lower()}_index.html', logger)
+    await save_webpage(page_url,
+                       f'{output_dir}\\{job_content['link'].lower()}'
+                       f'_index.html',
+                       logger)
 
     logger.info(f'Worker {os.getpid()} finished processing job: {job}')
 
@@ -132,7 +138,8 @@ def main():
     Returns:
     None
     """
-    logger = get_logger(f'worker-{os.getpid()}', f'./static/logs/worker-{os.getpid()}.log')
+    logger = get_logger(f'worker-{os.getpid()}',
+                        f'./static/logs/worker-{os.getpid()}.log')
     args = parse_args()
 
     logger.info(f'Worker {os.getpid()} started')
@@ -141,7 +148,8 @@ def main():
         logger.error('No .env file found')
         exit(1)
 
-    redis_conn = Redis(host=dotenv_values('.env')['REDIS_HOST'], port=dotenv_values('.env')['REDIS_PORT'],
+    redis_conn = Redis(host=dotenv_values('.env')['REDIS_HOST'],
+                       port=dotenv_values('.env')['REDIS_PORT'],
                        decode_responses=True)
 
     ping_redis(redis_conn, logger)

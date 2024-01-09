@@ -1,7 +1,7 @@
 """Master process for RQ workers
 
-Usage:
-python master.py -f <path_to_file> -o <path_to_output_directory> [-w <number_of_workers>] [-q <queue_name>]
+Usage: python master.py -f <path_to_file> -o <path_to_output_directory> [-w
+<number_of_workers>] [-q <queue_name>]
 
 Arguments:
 -f, --file: path to the json file with top sites
@@ -37,7 +37,8 @@ import subprocess
 from dotenv import dotenv_values
 from redis import Redis
 
-from src.utils.utils import get_logger, ping_redis, check_file_arg, check_dir_arg, check_workers_arg
+from src.utils.utils import get_logger, ping_redis, check_file_arg, \
+    check_dir_arg, check_workers_arg
 
 
 def parse_args():
@@ -48,12 +49,18 @@ def parse_args():
     Returns:
     argparse.Namespace: parsed arguments
     """
-    parser = argparse.ArgumentParser(prog='master.py', description='Master process for RQ workers')
-    parser.add_argument('-f', '--file', type=check_file_arg, required=True, help='Path to the json file with top sites')
+    parser = argparse.ArgumentParser(prog='master.py',
+                                     description='Master process for '
+                                                 'RQ workers')
+    parser.add_argument('-f', '--file', type=check_file_arg, required=True,
+                        help='Path to the json file with top sites')
     parser.add_argument('-o', '--output', type=check_dir_arg, required=True,
-                        help='Path to the output directory, where the results will be saved')
-    parser.add_argument('-w', '--workers', type=check_workers_arg, default=1, help='Number of workers to spawn')
-    parser.add_argument('-q', '--queue', type=str, default='worker-pool-queue', help='Redis queue name')
+                        help='Path to the output directory, where the results '
+                             'will be saved')
+    parser.add_argument('-w', '--workers', type=check_workers_arg, default=1,
+                        help='Number of workers to spawn')
+    parser.add_argument('-q', '--queue', type=str, default='worker-pool-queue',
+                        help='Redis queue name')
     return parser.parse_args()
 
 
@@ -99,7 +106,8 @@ def read_input_data(file_path, logger):
 def populate_queue(redis_conn, queue_name, input_data, output_dir, logger):
     """Populates the queue with the input data
 
-    Populates the queue with the input data. If the queue already exists, it is deleted and recreated.
+    Populates the queue with the input data. If the queue already exists,
+    it is deleted and recreated.
 
     Args:
     redis_conn (redis.Redis): redis connection object
@@ -124,7 +132,8 @@ def populate_queue(redis_conn, queue_name, input_data, output_dir, logger):
         for link in sites.values():
             disk_location = f'{output_dir}\\{country}'
             try:
-                redis_conn.rpush(queue_name, json.dumps({'DiskLocation': disk_location, 'link': link}))
+                redis_conn.rpush(queue_name, json.dumps(
+                    {'DiskLocation': disk_location, 'link': link}))
                 redis_conn.expire(queue_name, 60 * 60)
                 logger.info(f'Pushed {link} to {queue_name}')
             except Exception as e:
@@ -149,7 +158,8 @@ def spawn_workers(nr_of_workers, queue_name, logger):
     for i in range(nr_of_workers):
         logger.info(f'Spawning worker {i}')
         try:
-            processes.append(subprocess.Popen(['python', './src/main/worker.py', '-q', queue_name]))
+            processes.append(subprocess.Popen(
+                ['python', './src/main/worker.py', '-q', queue_name]))
         except Exception as e:
             logger.error(f'Cannot spawn worker: {e}')
 
@@ -160,8 +170,9 @@ def spawn_workers(nr_of_workers, queue_name, logger):
 def main():
     """Main function
 
-    Main function of the master process. It parses the command line arguments, reads the input data from a json file,
-    populates the queue with the input data and spawns the workers.
+    Main function of the master process. It parses the command line
+    arguments, reads the input data from a json file, populates the queue
+    with the input data and spawns the workers.
 
     Exit codes:
     1: no .env file found
@@ -175,7 +186,8 @@ def main():
         logger.error('No .env file found')
         exit(1)
 
-    redis_conn = Redis(host=dotenv_values('.env')['REDIS_HOST'], port=dotenv_values('.env')['REDIS_PORT'],
+    redis_conn = Redis(host=dotenv_values('.env')['REDIS_HOST'],
+                       port=dotenv_values('.env')['REDIS_PORT'],
                        decode_responses=True)
 
     ping_redis(redis_conn, logger)

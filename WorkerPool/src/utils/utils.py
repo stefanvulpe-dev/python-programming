@@ -1,6 +1,7 @@
 """Utility functions for the project
 
-This module contains utility functions for the project. It is used by the main script and the tests.
+This module contains utility functions for the project. It is used by the
+main script and the tests.
 
 Functions:
 get_logger: creates a logger object
@@ -36,7 +37,9 @@ def get_logger(name, log_file):
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
 
-    formatter = logging.Formatter('[%(asctime)s] - %(name)s - %(levelname)s - %(message)s', "%Y-%m-%d %H:%M:%S")
+    formatter = logging.Formatter(
+        '[%(asctime)s] - %(name)s - %(levelname)s - %(message)s',
+        "%Y-%m-%d %H:%M:%S")
 
     fh = logging.FileHandler(log_file)
     fh.setLevel(logging.INFO)
@@ -78,7 +81,8 @@ def ping_redis(redis_conn, logger):
 def check_file_arg(file_path):
     """Checks if the file argument is valid
 
-    Checks if the file argument is valid. If the file does not exist, an error is raised.
+    Checks if the file argument is valid. If the file does not exist,
+    an error is raised.
 
     Args:
     file_path (str): path to the file
@@ -97,7 +101,8 @@ def check_file_arg(file_path):
 def check_dir_arg(dir_path):
     """Checks if the directory argument is valid
 
-    Checks if the directory argument is valid. If the directory does not exist, an error is raised.
+    Checks if the directory argument is valid. If the directory does not
+    exist, an error is raised.
 
     Args:
     dir_path (str): path to the directory
@@ -109,14 +114,16 @@ def check_dir_arg(dir_path):
     argparse.ArgumentTypeError: if the directory does not exist
     """
     if not os.path.isdir(dir_path):
-        raise argparse.ArgumentTypeError(f'Output directory {dir_path} does not exist')
+        raise argparse.ArgumentTypeError(
+            f'Output directory {dir_path} does not exist')
     return dir_path
 
 
 def check_workers_arg(workers):
     """Checks if the workers argument is valid
 
-    Checks if the workers argument is valid. If the workers argument is not an integer or is less than 1, an error is raised.
+    Checks if the workers argument is valid. If the workers argument is not
+    an integer or is less than 1, an error is raised.
 
     Args:
     workers (str): number of workers
@@ -124,14 +131,15 @@ def check_workers_arg(workers):
     Returns:
     int: number of workers
 
-    Raises:
-    argparse.ArgumentTypeError: if the workers argument is not an integer or is less than 1
+    Raises: argparse.ArgumentTypeError: if the workers argument is not an
+    integer or is less than 1
     """
     try:
         workers = int(workers)
     except ValueError:
-        raise argparse.ArgumentTypeError(f'Number of workers must be an integer')
+        raise argparse.ArgumentTypeError(
+            f'Number of workers must be an integer')
     if workers < 1:
-        raise argparse.ArgumentTypeError(f'Number of workers must be at least 1')
+        raise argparse.ArgumentTypeError(
+            f'Number of workers must be at least 1')
     return workers
-
